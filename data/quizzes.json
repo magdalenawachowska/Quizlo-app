@@ -1,0 +1,83 @@
+[
+  {
+    "id": "qz_css",
+    "category": "nauka",
+    "title": "CSS Basics",
+    "cover": "https://i.pinimg.com/736x/75/e0/61/75e06170e12c918187a64335c0a99d42.jpg",
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Która właściwość w CSS odpowiada za układ elementów w osi głównej w Flexbox?",
+        "options": [
+          "align-items",
+          "justify-content",
+          "place-items",
+          "flex-wrap"
+        ],
+        "correctIndex": 1
+      },
+      {
+        "id": "q2",
+        "text": "Który selektor ma najwyższą specyficzność?",
+        "options": [".card .title", "#header .title", "div .title", "h1"],
+        "correctIndex": 1
+      },
+      {
+        "id": "q3",
+        "text": "Co robi `box-sizing: border-box`?",
+        "options": [
+          "Dodaje obramowanie do szerokości, ale nie do wysokości",
+          "Wlicza padding i border do width/height",
+          "Ignoruje padding",
+          "Zmienia model na grid"
+        ],
+        "correctIndex": 1
+      }
+    ]
+  },
+  {
+    "id": "qz_music",
+    "category": "piosenki",
+    "title": "Muzyka: ciekawostki",
+    "cover": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=1200&q=70",
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Który instrument ma struny i klawiaturę?",
+        "options": ["Fortepian", "Trąbka", "Flet", "Bęben"],
+        "correctIndex": 0
+      },
+      {
+        "id": "q2",
+        "text": "Co oznacza tempo 60 BPM?",
+        "options": [
+          "60 uderzeń na minutę",
+          "60 nut na sekundę",
+          "60 taktów na sekundę",
+          "60 decybeli"
+        ],
+        "correctIndex": 0
+      }
+    ]
+  },
+  {
+    "id": "qz_sport",
+    "category": "sport",
+    "title": "Sport: szybki quiz",
+    "cover": "https://i.pinimg.com/736x/ef/55/9b/ef559ba1c670607b5535bcd96362ae94.jpg",
+    "questions": [
+      {
+        "id": "q1",
+        "text": "Ile osób jest na boisku w piłce nożnej (łącznie, bez rezerwowych)?",
+        "options": ["20", "22", "24", "18"],
+        "correctIndex": 1
+      },
+      {
+        "id": "q2",
+        "text": "W jakim sporcie używa się 'rakiety'?",
+        "options": ["Tenis", "Boks", "Pływanie", "Kolarstwo"],
+        "correctIndex": 0
+      }
+    ]
+  }
+]

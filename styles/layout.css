@@ -1,0 +1,96 @@
+:root {
+  --max: 980px;
+}
+.container {
+  width: min(var(--max), 100% - 48px);
+  margin: 0 auto;
+}
+
+.page {
+  padding: 34px 0 56px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  padding: 18px 22px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(10px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.brand-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 14px;
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    color-mix(in oklab, var(--primary), #fff 40%)
+  );
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.grid {
+  display: grid;
+  gap: var(--gap);
+}
+
+.grid-tiles {
+  grid-template-columns: repeat(12, 1fr);
+}
+@media (max-width: 900px) {
+  .grid-tiles {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .grid-tiles {
+    grid-template-columns: repeat(1, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .container {
+    width: min(var(--max), 100% - 24px);
+  }
+}
+
+.card {
+  background: var(--card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+}
+
+.section-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 12px;
+}
+.section-title h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.section-title p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}

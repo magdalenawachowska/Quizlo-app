@@ -1,0 +1,99 @@
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in oklab, var(--muted), transparent 70%);
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+  color: var(--text);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform var(--speed) var(--ease),
+    background var(--speed) var(--ease), border-color var(--speed) var(--ease);
+}
+.btn:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--muted), transparent 55%);
+}
+.btn:active {
+  transform: translateY(0px);
+}
+
+.btn-primary {
+  border-color: transparent;
+  background: linear-gradient(
+    135deg,
+    var(--primary),
+    color-mix(in oklab, var(--primary), #fff 35%)
+  );
+  color: color-mix(in oklab, var(--card), var(--text) 20%);
+}
+.btn-danger {
+  border-color: transparent;
+  background: linear-gradient(
+    135deg,
+    var(--danger),
+    color-mix(in oklab, var(--danger), #fff 25%)
+  );
+  color: #fff;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--surface), var(--card) 50%);
+  border: 1px solid color-mix(in oklab, var(--muted), transparent 75%);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.input {
+  height: 42px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in oklab, var(--muted), transparent 75%);
+  background: color-mix(in oklab, var(--card), var(--surface) 20%);
+  color: var(--text);
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+.toast {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.fade-in {
+  animation: fadeIn 220ms var(--ease) both;
+}
+.slide-in {
+  animation: slideIn 220ms var(--ease) both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
