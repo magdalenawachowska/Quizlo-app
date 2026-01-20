@@ -1,5 +1,6 @@
 import { store } from '../store.js';
 import { go } from '../router.js';
+import { fetchTriviaQuiz } from '../services/triviaService.js';
 
 import './confirm-modal.js';
 import './quiz-title.js';
@@ -27,8 +28,8 @@ tpl.innerHTML = `
 
   .title h2{
     margin:0;
-    font-size: 18px;
-    font-weight: 800;
+    font-size: 16px;
+    font-weight: 650;
     color: color-mix(in oklab, var(--text), var(--primary) 18%);
   }
   .title .sub{
@@ -78,34 +79,6 @@ tpl.innerHTML = `
   }
   .icon svg{ display:block; }
 
-  .sort select{
-    height: 42px;
-    border-radius: 999px;
-    border: 1px solid color-mix(in oklab, var(--muted), transparent 78%);
-    background: color-mix(in oklab, var(--card) 88%, transparent);
-    color: var(--text);
-    outline: none;
-    cursor: pointer;
-
-    min-width: 200px;
-    padding: 0 44px 0 14px;
-    box-shadow: 0 10px 18px rgba(0,0,0,.05);
-
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-
-    /* własna strzałka*/
-    background-image:
-      linear-gradient(45deg, transparent 50%, currentColor 50%),
-      linear-gradient(135deg, currentColor 50%, transparent 50%);
-    background-position:
-      calc(100% - 22px) 18px,
-      calc(100% - 16px) 18px;
-    background-size: 6px 6px, 6px 6px;
-    background-repeat: no-repeat;
-  }
-
   /*kafelki */
   .tiles{
     display:grid;
@@ -142,6 +115,57 @@ tpl.innerHTML = `
     color: color-mix(in oklab, var(--muted), var(--primary) 12%);
     font-size: 13px;
   }
+
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--muted), transparent 70%);
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+  color: var(--text);
+  cursor:pointer;
+  transition: transform var(--speed) var(--ease), border-color var(--speed) var(--ease);
+  font-weight: 550;
+  font-size: 14px;
+}
+
+.btn:hover{
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--muted), transparent 50%);
+}
+
+.btn > #sort{
+  height: 42px;
+  border: 0;
+  outline: 0;
+  background: transparent; 
+  color: inherit;       
+  font: inherit;
+
+  min-width: 200px;
+  padding: 0 44px 0 6px;
+
+  cursor: pointer;
+
+  appearance: auto;
+  -webkit-appearance: auto;
+  -moz-appearance: auto;
+}
+
+/* Dark mode: lekko jaśniejsza obwódka/select */
+:host-context([data-theme='dark']) .btn{
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+  border-color: color-mix(in oklab, var(--muted), transparent 55%);
+}
+
+:host-context([data-theme='dark']) #sort option{
+  background: #0f1918;
+  color: #fff;
+}
+
 </style>
 
 
@@ -163,7 +187,7 @@ tpl.innerHTML = `
 
         </div>
 
-        <div class="sort">
+        <div class="btn">
           <select id="sort">
             <option value="default">Sortowanie: domyślnie</option>
             <option value="az">Nazwa A–Z</option>
@@ -172,6 +196,7 @@ tpl.innerHTML = `
             <option value="qdesc">Pytania malejąco</option>
           </select>
         </div>
+          <button class="btn" id="fetchBtn" type="button" title="Pobierz nowy quiz (admin)">Pobierz</button>
       </div>
     </div>
 
@@ -187,6 +212,7 @@ export class QuizDashboard extends HTMLElement {
   // UI state
   #query = '';
   #sort = 'default';
+  #loading = false;
 
   constructor() {
     super();
@@ -194,22 +220,39 @@ export class QuizDashboard extends HTMLElement {
   }
 
   connectedCallback() {
-    const q = this.shadowRoot.getElementById('q');
-    const sort = this.shadowRoot.getElementById('sort');
+  const s = this.shadowRoot;
 
+  const q = s.getElementById('q');
+  const sort = s.getElementById('sort');
+  const fetchBtn = s.getElementById('fetchBtn');
+
+  // search
+  if (q) {
     q.addEventListener('input', () => {
       this.#query = q.value || '';
       this.render();
     });
+  }
 
+  // sort
+  if (sort) {
     sort.addEventListener('change', () => {
       this.#sort = sort.value || 'default';
       this.render();
     });
-
-    this.#unsub = store.subscribe(() => this.render());
-    this.render();
   }
+
+  // fetch trivia quiz (tylko admin)
+  if (fetchBtn) {
+    fetchBtn.addEventListener('click', () => this.fetchOneQuiz());
+  }
+
+  // re-render on store change
+  this.#unsub = store.subscribe(() => this.render());
+
+  this.render();
+}
+
 
   disconnectedCallback() {
     this.#unsub?.();
@@ -245,6 +288,9 @@ export class QuizDashboard extends HTMLElement {
     const msg = this.shadowRoot.getElementById('msg');
     const title = this.shadowRoot.getElementById('title');
     const sub = this.shadowRoot.getElementById('sub');
+    const fetchBtn = this.shadowRoot.getElementById('fetchBtn');
+    const isAdmin = store.state.session?.role === 'admin';
+    if (fetchBtn) fetchBtn.style.display = isAdmin ? 'inline-flex' : 'none';
 
     tiles.innerHTML = '';
     msg.innerHTML = '';
@@ -266,7 +312,6 @@ export class QuizDashboard extends HTMLElement {
 
     const filtered = this.#applyFilterAndSort(allQuizzes);
 
-    // licznik po lewej (zgodny z filtrem)
     title.textContent = `Dostępne quizy: ${filtered.length}`;
     sub.textContent = '';
 
@@ -275,7 +320,6 @@ export class QuizDashboard extends HTMLElement {
       return;
     }
 
-    // IntersectionObserver: delikatne wejście kafelków
     this.#io?.disconnect();
     this.#io = new IntersectionObserver(
       (entries) => {
@@ -322,6 +366,54 @@ export class QuizDashboard extends HTMLElement {
       this.#io.observe(el);
     });
   }
+
+  async fetchOneQuiz() {
+  const session = store.state.session;
+  if (session?.role !== 'admin') return;
+
+  const msg = this.shadowRoot.getElementById('msg');
+  const btn = this.shadowRoot.getElementById('fetchBtn');
+
+  if (this.#loading) return;
+  this.#loading = true;
+
+  if (msg) msg.innerHTML = '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Pobieram...';
+  }
+
+  //pobieranie danych
+  try {
+    const quiz = await fetchTriviaQuiz({ amount: 6, timeoutMs: 8000 });
+
+  // liczymy tylko quizy pobrane (source = opentdb)
+  const downloadedCount = (store.state.quizzes || []).filter(
+    (q) => q?.source === 'opentdb'
+  ).length;
+
+  quiz.title = `Trivia quiz - ${downloadedCount + 1}`;
+  quiz.category= 'inne';
+
+    // dodawanie na początek listy
+    store.state.quizzes = [quiz, ...store.state.quizzes];
+
+    //przesunięcie do góry
+    queueMicrotask(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  } catch (e) {
+    const text = e?.message || 'Nie udało się pobrać quizu.';
+    if (msg) {
+      msg.innerHTML = `<div class="empty">${text}</div>`;
+    }
+    console.error('Pobieranie quizu (OpenTDB) — błąd:', e);
+  } finally {
+    this.#loading = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Pobierz';
+    }
+  }
+}
 }
 
 customElements.define('quiz-dashboard', QuizDashboard);

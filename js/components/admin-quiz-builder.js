@@ -206,11 +206,12 @@ tpl.innerHTML = `
             <option value="barmaństwo">barmaństwo</option>
             <option value="piosenki">piosenki</option>
             <option value="nauka">nauka</option>
+            <option value="inne">inne</option>
           </select>
         </label>
         <label>
           Tytuł
-          <input name="title" required maxlength="40" placeholder="np. Barmaństwo: podstawy" />
+          <input name="title" required maxlength="40" placeholder="np. Sport: ciekawostki" />
         </label>
       </div>
 
