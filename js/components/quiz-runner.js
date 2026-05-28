@@ -59,12 +59,11 @@ tpl.innerHTML = `
       font-weight: 650;
     }
 
-    .note{ color: var(--muted); font-size: 12px; }
+    .note{ color: var(--muted); font-size: 12px; line-height: 1.35; }
     
     :host-context([data-theme='dark']) .btn{
-        color: #fff;
+      color: #fff;
     }
-
   </style>
 
   <section class="card fade-in">
@@ -86,196 +85,303 @@ tpl.innerHTML = `
 
     <div class="actions">
       <button class="btn" id="backBtn">Wróć</button>
-      <button class="btn btn-primary" id="nextBtn">Dalej</button>
+      <button class="btn btn-primary" id="nextBtn">Sprawdź</button>
     </div>
   </section>
 `;
 
+function getCorrectIndexes(question) {
+  if (Array.isArray(question.correctIndexes)) {
+    return question.correctIndexes.map(Number);
+  }
+
+  if (typeof question.correctIndex === 'number') {
+    return [question.correctIndex];
+  }
+
+  return [0];
+}
+
+function sameIndexes(a, b) {
+  const aa = [...a].map(Number).sort((x, y) => x - y);
+  const bb = [...b].map(Number).sort((x, y) => x - y);
+
+  return aa.length === bb.length && aa.every((x, i) => x === bb[i]);
+}
+
+function normalizeAnswer(answer) {
+  if (!answer) {
+    return {
+      selectedIndexes: [],
+      checked: false,
+      isCorrect: false,
+    };
+  }
+
+  // kompatybilność ze starym formatem: { selectedIndex, isCorrect }
+  if (typeof answer.selectedIndex === 'number') {
+    return {
+      selectedIndexes: [answer.selectedIndex],
+      checked: true,
+      isCorrect: !!answer.isCorrect,
+    };
+  }
+
+  return {
+    selectedIndexes: Array.isArray(answer.selectedIndexes)
+      ? answer.selectedIndexes.map(Number)
+      : [],
+    checked: !!answer.checked,
+    isCorrect: !!answer.isCorrect,
+  };
+}
+
 export class QuizRunner extends HTMLElement {
-    #quizId = '';
-    #quiz = null;
+  #quizId = '';
+  #quiz = null;
 
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' }).appendChild(
-            tpl.content.cloneNode(true)
-        );
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' }).appendChild(
+      tpl.content.cloneNode(true)
+    );
+  }
+
+  connectedCallback() {
+    this.#quizId = this.getAttribute('quiz-id') || '';
+    this.#quiz = store.state.quizzes.find((q) => q.id === this.#quizId);
+
+    if (!this.#quiz) {
+      go('/dashboard');
+      return;
     }
 
-    connectedCallback() {
-        this.#quizId = this.getAttribute('quiz-id') || '';
-        this.#quiz = store.state.quizzes.find((q) => q.id === this.#quizId);
+    if (!store.state.current || store.state.current.quizId !== this.#quizId) {
+      store.state.current = {
+        quizId: this.#quizId,
+        index: 0,
+        answers: Array(this.#quiz.questions.length).fill(null),
+        score: 0,
+        startedAtMs: nowMs(),
+        startedAtISO: isoNow(),
+      };
+    }
 
-        if (!this.#quiz) {
-            // fallback
-            go('/dashboard');
-            return;
+    const s = this.shadowRoot;
+
+    s.getElementById('exitBtn').addEventListener('click', () =>
+      go('/dashboard')
+    );
+
+    s.getElementById('backBtn').addEventListener('click', () =>
+      this.back()
+    );
+
+    s.getElementById('nextBtn').addEventListener('click', () =>
+      this.next()
+    );
+
+    s.getElementById('options').addEventListener('pick', (ev) => {
+      const selectedIndex = Number(ev.detail.value);
+      this.pick(selectedIndex);
+    });
+
+    this.render();
+  }
+
+  pick(selectedIndex) {
+    const cur = store.state.current;
+    const qi = cur.index;
+
+    const currentAnswer = normalizeAnswer(cur.answers[qi]);
+
+    // po sprawdzeniu pytania blokujemy zmianę odpowiedzi
+    if (currentAnswer.checked) return;
+
+    let selectedIndexes = [...currentAnswer.selectedIndexes];
+
+    if (selectedIndexes.includes(selectedIndex)) {
+      selectedIndexes = selectedIndexes.filter((i) => i !== selectedIndex);
+    } else {
+      selectedIndexes.push(selectedIndex);
+    }
+
+    const newAnswers = cur.answers.slice();
+    newAnswers[qi] = {
+      ...currentAnswer,
+      selectedIndexes,
+      checked: false,
+      isCorrect: false,
+    };
+
+    store.state.current = {
+      ...cur,
+      answers: newAnswers,
+    };
+
+    this.render();
+  }
+
+  checkCurrentQuestion() {
+    const cur = store.state.current;
+    const qi = cur.index;
+    const q = this.#quiz.questions[qi];
+
+    const currentAnswer = normalizeAnswer(cur.answers[qi]);
+
+    if (currentAnswer.checked) return cur;
+
+    const correctIndexes = getCorrectIndexes(q);
+    const selectedIndexes = currentAnswer.selectedIndexes;
+
+    const isCorrect = sameIndexes(selectedIndexes, correctIndexes);
+
+    const newAnswers = cur.answers.slice();
+    newAnswers[qi] = {
+      selectedIndexes,
+      checked: true,
+      isCorrect,
+    };
+
+    const newCur = {
+      ...cur,
+      answers: newAnswers,
+      score: cur.score + (isCorrect ? 1 : 0),
+    };
+
+    store.state.current = newCur;
+    return newCur;
+  }
+
+  back() {
+    const cur = store.state.current;
+    if (cur.index <= 0) return;
+
+    store.state.current = { ...cur, index: cur.index - 1 };
+    this.render();
+  }
+
+  next() {
+    let cur = store.state.current;
+    const currentAnswer = normalizeAnswer(cur.answers[cur.index]);
+
+    // pierwszy klik: sprawdź odpowiedź, pokaż feedback, nie przechodź dalej
+    if (!currentAnswer.checked) {
+      this.checkCurrentQuestion();
+      this.render();
+      return;
+    }
+
+    cur = store.state.current;
+    const last = this.#quiz.questions.length - 1;
+
+    // drugi klik: przejście dalej / zakończenie
+    if (cur.index >= last) {
+      const finishedAtMs = nowMs();
+
+      store.state.current = {
+        ...cur,
+        finishedAtMs,
+        finishedAtISO: isoNow(),
+        durationMs: finishedAtMs - cur.startedAtMs,
+      };
+
+      go('/summary');
+      return;
+    }
+
+    store.state.current = { ...cur, index: cur.index + 1 };
+    this.render();
+  }
+
+  render() {
+    const s = this.shadowRoot;
+    const cur = store.state.current;
+
+    const total = this.#quiz.questions.length;
+    const idx = cur.index;
+
+    s.getElementById('quizTitle').textContent = this.#quiz.title;
+    s.getElementById('quizMeta').textContent = `Kategoria: ${this.#quiz.category}`;
+
+    const bar = s.getElementById('bar');
+    bar.setAttribute('current', String(idx + 1));
+    bar.setAttribute('total', String(total));
+    bar.setAttribute('score', String(cur.score));
+
+    const q = this.#quiz.questions[idx];
+    const correctIndexes = getCorrectIndexes(q);
+
+    s.getElementById('qtext').textContent = q.text;
+
+    const note = s.getElementById('note');
+    const options = s.getElementById('options');
+    const nextBtn = s.getElementById('nextBtn');
+
+    options.innerHTML = '';
+
+    const currentAnswer = normalizeAnswer(cur.answers[idx]);
+    const selectedIndexes = currentAnswer.selectedIndexes;
+    const checked = currentAnswer.checked;
+
+    if (checked) {
+      note.textContent = currentAnswer.isCorrect
+        ? 'Dobrze! Możesz przejść dalej.'
+        : 'Odpowiedź została sprawdzona. Poprawne odpowiedzi są oznaczone.';
+    } else if (correctIndexes.length > 1) {
+      note.textContent =
+        'To pytanie ma więcej niż jedną poprawną odpowiedź. Zaznacz wszystkie poprawne odpowiedzi i kliknij "Sprawdź".';
+    } else {
+      note.textContent =
+        'Wybierz odpowiedź i kliknij "Sprawdź". Brak odpowiedzi oznacza 0 punktów za pytanie.';
+    }
+
+    q.options.forEach((text, i) => {
+      const opt = document.createElement('answer-option');
+
+      let state = null;
+      let icon = '•';
+
+      const isSelected = selectedIndexes.includes(i);
+      const isCorrectOption = correctIndexes.includes(i);
+
+      if (!checked) {
+        if (isSelected) {
+          state = 'selected';
+          icon = '✓';
         }
-
-        // init current session quiz state
-        if (
-            !store.state.current ||
-            store.state.current.quizId !== this.#quizId
-        ) {
-            store.state.current = {
-                quizId: this.#quizId,
-                index: 0,
-                answers: Array(this.#quiz.questions.length).fill(null), // null lub { selectedIndex, isCorrect }
-                score: 0,
-                startedAtMs: nowMs(),
-                startedAtISO: isoNow(),
-            };
+      } else {
+        if (isSelected && isCorrectOption) {
+          state = 'correct';
+          icon = '✓';
+        } else if (isSelected && !isCorrectOption) {
+          state = 'wrong';
+          icon = '✕';
+        } else if (!isSelected && isCorrectOption) {
+          state = 'correct';
+          icon = '✓';
         }
+      }
 
-        const s = this.shadowRoot;
-        s.getElementById('exitBtn').addEventListener('click', () =>
-            go('/dashboard')
-        );
-        s.getElementById('backBtn').addEventListener('click', () =>
-            this.back()
-        );
-        s.getElementById('nextBtn').addEventListener('click', () =>
-            this.next()
-        );
+      opt.data = {
+        text,
+        value: String(i),
+        disabled: checked,
+        state,
+        icon,
+      };
 
-        // event delegation: pick odpowiedzi
-        s.getElementById('options').addEventListener('pick', (ev) => {
-            const selectedIndex = Number(ev.detail.value);
-            this.pick(selectedIndex);
-        });
+      options.appendChild(opt);
+    });
 
-        this.render();
+    s.getElementById('backBtn').disabled = idx === 0;
+
+    if (!checked) {
+      nextBtn.textContent = 'Sprawdź';
+    } else {
+      nextBtn.textContent = idx === total - 1 ? 'Zakończ' : 'Dalej';
     }
-
-    pick(selectedIndex) {
-        const cur = store.state.current;
-        const qi = cur.index;
-
-        // jeżeli już odpowiedziano na to pytanie — blokada
-        if (cur.answers[qi] !== null) return;
-
-        const q = this.#quiz.questions[qi];
-        const isCorrect = selectedIndex === q.correctIndex;
-
-        // update score i odpowiedzi (reaktywność przez store)
-        const newAnswers = cur.answers.slice();
-        newAnswers[qi] = { selectedIndex, isCorrect };
-
-        store.state.current = {
-            ...cur,
-            answers: newAnswers,
-            score: cur.score + (isCorrect ? 1 : 0),
-        };
-
-        // render (żeby pokazać zielone/czerwone)
-        this.render();
-
-        // drobny “event loop” - microtask
-        queueMicrotask(() => {
-            const card = this.shadowRoot.getElementById('qcard');
-            card.classList.remove('slide-in');
-            void card.offsetWidth;
-            card.classList.add('slide-in');
-        });
-    }
-
-    back() {
-        const cur = store.state.current;
-        if (cur.index <= 0) return;
-        store.state.current = { ...cur, index: cur.index - 1 };
-        this.render();
-    }
-
-    next() {
-        const cur = store.state.current;
-        const last = this.#quiz.questions.length - 1;
-        if (cur.index >= last) {
-            const finishedAtMs = nowMs();
-            store.state.current = {
-                ...cur,
-                finishedAtMs,
-                finishedAtISO: isoNow(),
-                durationMs: finishedAtMs - cur.startedAtMs,
-            };
-            go('/summary');
-            return;
-        }
-        store.state.current = { ...cur, index: cur.index + 1 };
-        this.render();
-    }
-
-    render() {
-        const s = this.shadowRoot;
-        const cur = store.state.current;
-        const total = this.#quiz.questions.length;
-        const idx = cur.index;
-
-        s.getElementById('quizTitle').textContent = this.#quiz.title;
-        s.getElementById('quizMeta').textContent = `Kategoria: ${
-            this.#quiz.category
-        }`;
-
-        const bar = s.getElementById('bar');
-        bar.setAttribute('current', String(idx + 1));
-        bar.setAttribute('total', String(total));
-        bar.setAttribute('score', String(cur.score));
-
-        const q = this.#quiz.questions[idx];
-        s.getElementById('qtext').textContent = q.text;
-
-        const note = s.getElementById('note');
-        const options = s.getElementById('options');
-        options.innerHTML = '';
-
-        const answered = cur.answers[idx] !== null;
-
-        note.textContent = answered
-            ? 'Odpowiedź została zapisana. Możesz iść dalej lub wrócić.'
-            : 'Kliknij "Dalej" aby przejść dalej. Brak udzielenia odpowiedzi- 0 punktów za pytanie.';
-
-        q.options.forEach((text, i) => {
-            const opt = document.createElement('answer-option');
-
-            // stan kafelka po wyborze: zielony/czerwony + ikonka
-            let state = null;
-            let icon = '•';
-
-            if (answered) {
-                const sel = cur.answers[idx].selectedIndex;
-                const isCorrect = i === q.correctIndex;
-                const isSelected = i === sel;
-
-                if (isSelected && isCorrect) {
-                    state = 'correct';
-                    icon = '✓';
-                } else if (isSelected && !isCorrect) {
-                    state = 'wrong';
-                    icon = '✕';
-                } else if (!isSelected && isCorrect) {
-                    state = 'correct';
-                    icon = '✓';
-                } else {
-                    state = null;
-                    icon = '•';
-                }
-            }
-
-            opt.data = {
-                text,
-                value: String(i),
-                disabled: answered, // blokada ponownego kliku
-                state,
-                icon,
-            };
-
-            options.appendChild(opt);
-        });
-
-        // back disabled na pierwszym
-        s.getElementById('backBtn').disabled = idx === 0;
-        s.getElementById('nextBtn').textContent =
-            idx === total - 1 ? 'Zakończ' : 'Dalej';
-    }
+  }
 }
 
 customElements.define('quiz-runner', QuizRunner);

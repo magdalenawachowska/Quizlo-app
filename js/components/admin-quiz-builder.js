@@ -115,6 +115,37 @@ tpl.innerHTML = `
   }
 
   .opts{ display:grid; gap: 8px; }
+
+  .correct-box{
+  display:grid;
+  gap: 8px;
+  }
+
+  .correct-title{
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .correct-options{
+    display:flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    align-items:center;
+  }
+
+  .correct-options label{
+    display:inline-flex;
+    align-items:center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .correct-options input{
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+  }
   .row{ display:flex; gap: 10px; flex-wrap: wrap; align-items:center; justify-content:space-between; }
 
   .btn{
@@ -211,7 +242,7 @@ tpl.innerHTML = `
         </label>
         <label>
           Tytuł
-          <input name="title" required maxlength="40" placeholder="np. Sport: ciekawostki" />
+          <input name="title" required maxlength="70" placeholder="np. Sport: ciekawostki" />
         </label>
       </div>
 
@@ -269,13 +300,16 @@ function makeQuestionBox(index) {
         <label>Odpowiedź B <input name="q_${index}_opt_1" required maxlength="150"></label>
         <label>Odpowiedź C <input name="q_${index}_opt_2" required maxlength="150"></label>
         <label>Odpowiedź D <input name="q_${index}_opt_3" required maxlength="150"></label>
-        <label>Poprawna odpowiedź
-          <select name="q_${index}_correct" required>
-            <option value="0">A</option>
-            <option value="1">B</option>
-            <option value="2">C</option>
-            <option value="3">D</option>
-          </select>
+        <div class="correct-box">
+        <span class="correct-title">Poprawne odpowiedzi</span>
+
+        <div class="correct-options">
+          <label>A <input type="checkbox" name="q_${index}_correct_0"></label>
+          <label>B <input type="checkbox" name="q_${index}_correct_1"></label>
+          <label>C <input type="checkbox" name="q_${index}_correct_2"></label>
+          <label>D <input type="checkbox" name="q_${index}_correct_3"></label>
+        </div>
+      </div>
         </label>
       </div>
     </div>
@@ -345,9 +379,17 @@ export class AdminQuizBuilder extends HTMLElement {
                     const inp = box.querySelector(`[name="q_${i}_opt_${k}"]`);
                     if (inp) inp.value = opt || '';
                 });
-                box.querySelector(`[name="q_${i}_correct"]`).value = String(
-                    qq.correctIndex ?? 0
-                );
+                const correctIndexes =
+                    qq.correctIndexes ??
+                    [qq.correctIndex ?? 0];
+
+                  correctIndexes.forEach((idx) => {
+                    const cb = box.querySelector(
+                      `[name="q_${i}_correct_${idx}"]`
+                    );
+
+                    if (cb) cb.checked = true;
+                  });
 
                 box.open = i === 0; // np. tylko pierwsze otwarte
             });
@@ -413,7 +455,21 @@ export class AdminQuizBuilder extends HTMLElement {
                 const options = [0, 1, 2, 3].map((k) =>
                     String(fd.get(`q_${i}_opt_${k}`) || '').trim()
                 );
-                const correctIndex = Number(fd.get(`q_${i}_correct`));
+                const correctIndexes = [];
+
+                  for (let k = 0; k < 4; k++) {
+                    const checked = fd.get(`q_${i}_correct_${k}`);
+
+                    if (checked !== null) {
+                      correctIndexes.push(k);
+                    }
+                  }
+
+                //walidacja
+                if (correctIndexes.length === 0) {
+                  err.textContent = `Wybierz poprawną odpowiedź w pytaniu ${i + 1}.`;
+                  return;
+                }
 
                 if (!text || options.some((o) => !o)) {
                     err.textContent = `Uzupełnij pytanie ${i + 1}.`;
@@ -423,7 +479,7 @@ export class AdminQuizBuilder extends HTMLElement {
                     id: `q${i + 1}`,
                     text,
                     options,
-                    correctIndex,
+                    correctIndexes,
                 });
             }
 
