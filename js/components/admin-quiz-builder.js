@@ -265,10 +265,10 @@ function makeQuestionBox(index) {
       </label>
 
       <div class="opts">
-        <label>Odpowiedź A <input name="q_${index}_opt_0" required maxlength="100"></label>
-        <label>Odpowiedź B <input name="q_${index}_opt_1" required maxlength="100"></label>
-        <label>Odpowiedź C <input name="q_${index}_opt_2" required maxlength="100"></label>
-        <label>Odpowiedź D <input name="q_${index}_opt_3" required maxlength="100"></label>
+        <label>Odpowiedź A <input name="q_${index}_opt_0" required maxlength="150"></label>
+        <label>Odpowiedź B <input name="q_${index}_opt_1" required maxlength="150"></label>
+        <label>Odpowiedź C <input name="q_${index}_opt_2" required maxlength="150"></label>
+        <label>Odpowiedź D <input name="q_${index}_opt_3" required maxlength="150"></label>
         <label>Poprawna odpowiedź
           <select name="q_${index}_correct" required>
             <option value="0">A</option>
