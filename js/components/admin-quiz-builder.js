@@ -225,7 +225,7 @@ tpl.innerHTML = `
     <div class="form-actions">
     <div class="left-actions">
         <button class="btn" type="button" id="addQ">+ Dodaj pytanie</button>
-        <span class="qcounter">Pytania: <b id="qCount">0</b>/12</span>
+        <span class="qcounter">Pytania: <b id="qCount">0</b>/30</span>
     </div>
 
     <button class="btn btn-primary" type="submit">Zapisz quiz</button>
@@ -261,14 +261,14 @@ function makeQuestionBox(index) {
 
     <div class="qcontent">
       <label>Treść pytania
-        <textarea name="q_text_${index}" required maxlength="180"></textarea>
+        <textarea name="q_text_${index}" required maxlength="250"></textarea>
       </label>
 
       <div class="opts">
-        <label>Odpowiedź A <input name="q_${index}_opt_0" required maxlength="60"></label>
-        <label>Odpowiedź B <input name="q_${index}_opt_1" required maxlength="60"></label>
-        <label>Odpowiedź C <input name="q_${index}_opt_2" required maxlength="60"></label>
-        <label>Odpowiedź D <input name="q_${index}_opt_3" required maxlength="60"></label>
+        <label>Odpowiedź A <input name="q_${index}_opt_0" required maxlength="100"></label>
+        <label>Odpowiedź B <input name="q_${index}_opt_1" required maxlength="100"></label>
+        <label>Odpowiedź C <input name="q_${index}_opt_2" required maxlength="100"></label>
+        <label>Odpowiedź D <input name="q_${index}_opt_3" required maxlength="100"></label>
         <label>Poprawna odpowiedź
           <select name="q_${index}_correct" required>
             <option value="0">A</option>
@@ -359,8 +359,8 @@ export class AdminQuizBuilder extends HTMLElement {
         this.shadowRoot.getElementById('addQ').addEventListener('click', () => {
             err.textContent = '';
             ok.textContent = '';
-            if (qsWrap.children.length >= 12) {
-                err.textContent = 'Max 12 pytań.';
+            if (qsWrap.children.length >=30) {
+                err.textContent = 'Max 30 pytań.';
                 return;
             }
             // qsWrap.appendChild(makeQuestionBox(qsWrap.children.length));
